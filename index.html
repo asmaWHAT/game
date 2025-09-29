@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Mini 3D Game</title>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/examples/js/controls/PointerLockControls.js"></script>
+  <script>
+    // === SCENE, CAMERA, RENDERER ===
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x87ceeb); // sky color
+
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // === GROUND ===
+    const groundGeo = new THREE.PlaneGeometry(100, 100);
+    const groundMat = new THREE.MeshPhongMaterial({ color: 0x228B22 });
+    const ground = new THREE.Mesh(groundGeo, groundMat);
+    ground.rotation.x = -Math.PI / 2;
+    scene.add(ground);
+
+    // === LIGHT ===
+    const light = new THREE.DirectionalLight(0xffffff, 1);
+    light.position.set(10, 20, 10);
+    scene.add(light);
+
+    // === PLAYER CONTROLS ===
+    const controls = new THREE.PointerLockControls(camera, document.body);
+    document.body.addEventListener("click", () => {
+      controls.lock();
+    });
+
+    const velocity = new THREE.Vector3();
+    const direction = new THREE.Vector3();
+    let canJump = false;
+
+    const keys = {};
+    document.addEventListener("keydown", e => keys[e.code] = true);
+    document.addEventListener("keyup", e => keys[e.code] = false);
+
+    // === GAME LOOP ===
+    const clock = new THREE.Clock();
+    function animate() {
+      const delta = clock.getDelta();
+      velocity.x -= velocity.x * 10.0 * delta;
+      velocity.z -= velocity.z * 10.0 * delta;
+
+      direction.z = Number(keys["KeyW"]) - Number(keys["KeyS"]);
+      direction.x = Number(keys["KeyD"]) - Number(keys["KeyA"]);
+      direction.normalize();
+
+      if (keys["ShiftLeft"]) {
+        // Shift lock like Roblox → freeze camera rotation
+        controls.unlock();
+      } else {
+        if (!controls.isLocked) controls.lock();
+      }
+
+      if (keys["Space"] && canJump) {
+        velocity.y += 5; // jump power
+        canJump = false;
+      }
+
+      if (controls.isLocked) {
+        velocity.z -= direction.z * 50.0 * delta;
+        velocity.x -= direction.x * 50.0 * delta;
+
+        controls.moveRight(-velocity.x * delta);
+        controls.moveForward(-velocity.z * delta);
+
+        velocity.y -= 9.8 * delta; // gravity
+        camera.position.y += velocity.y * delta;
+
+        if (camera.position.y < 2) { // "ground level"
+          velocity.y = 0;
+          camera.position.y = 2;
+          canJump = true;
+        }
+      }
+
+      renderer.render(scene, camera);
+      requestAnimationFrame(animate);
+    }
+    animate();
+  </script>
+</body>
+</html>
